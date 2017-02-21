@@ -1,3 +1,4 @@
+package org.finomnis.minesweeper.game;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
@@ -14,7 +15,7 @@ public class Sprites {
     public Sprites(String str) {
         BufferedImage src = null;
         try {
-            InputStream res = Main.class.getResourceAsStream(str);
+            InputStream res = Sprites.class.getResourceAsStream(str);
             src = ImageIO.read(res);
         } catch (IOException e) {
             e.printStackTrace();

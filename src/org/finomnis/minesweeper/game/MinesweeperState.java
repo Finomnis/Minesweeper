@@ -1,3 +1,4 @@
+package org.finomnis.minesweeper.game;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
