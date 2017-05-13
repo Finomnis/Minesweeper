@@ -1,0 +1,3 @@
+[submodule "ext/DrawingWindow"]
+	path = ext/DrawingWindow
+	url = git@github.com:Finomnis/DrawingWindow.git
