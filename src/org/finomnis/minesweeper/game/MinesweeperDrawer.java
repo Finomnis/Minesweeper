@@ -1,6 +1,10 @@
 package org.finomnis.minesweeper.game;
 import java.awt.Graphics2D;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
+
+import org.finomnis.common.graphics.DrawingWindow;
 
 public class MinesweeperDrawer{
 
@@ -11,8 +15,8 @@ public class MinesweeperDrawer{
     }
     
     public void draw(MinesweeperState state){
-        int fieldWidth = 16*state.sizeX - 1;
-        int fieldHeight = 16*state.sizeY - 1;
+        int fieldWidth = 16*state.sizeX;
+        int fieldHeight = 16*state.sizeY;
         
         
         if(window.getWidth() != fieldWidth || window.getHeight() != fieldHeight){
@@ -54,6 +58,22 @@ public class MinesweeperDrawer{
         }
         
         window.display();
+    }
+    
+    public void addMouseListener(MouseListener listener){
+        window.addMouseListener(listener);
+    }
+    
+    public void removeMouseListener(MouseListener listener){
+        window.removeMouseListener(listener);
+    }
+    
+    public void addMouseMotionListener(MouseMotionListener listener){
+        window.addMouseMotionListener(listener);
+    }
+    
+    public void removeMouseMotionListener(MouseMotionListener listener){
+        window.addMouseMotionListener(listener);
     }
     
 }

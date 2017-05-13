@@ -65,6 +65,16 @@ public class MinesweeperState {
                 else this.setState(FieldState.REVEALED);
             }
         }
+        public boolean isFlagable() {
+            switch(this.fieldState){
+            case UNTOUCHED:
+            case QUESTIONED:
+            case FLAGGED:
+                return true;
+            default:
+                return false;
+            }
+        }
     }
     
     private boolean untouched = true;
@@ -78,6 +88,19 @@ public class MinesweeperState {
     private int numMines;
     private int numTouched = 0;
     private int numFlagged = 0;
+    
+    private long timeStarted;
+    private long timeFinished;
+    
+    public long getTime(){
+        if(untouched){
+            return 0;
+        }
+        if(!finished){
+            return System.currentTimeMillis() - timeStarted;
+        }
+        return timeFinished - timeStarted;
+    }
     
     public boolean gameFinished(){
         return finished;
@@ -216,11 +239,16 @@ public class MinesweeperState {
         }
     }
     
-    public boolean touch(int x, int y){
+    public void touch(int x, int y){
 
         assert(x >= 0 && x < sizeX && y >= 0 && y < sizeY);
 
+        if(finished){
+            return;
+        }
+        
         if(untouched){
+            timeStarted = System.currentTimeMillis();
             untouched = false;
             firstTouch(x,y);
         }
@@ -228,15 +256,16 @@ public class MinesweeperState {
         Field field = getField(x,y);
         
         if(!field.isTouchable()){
-            return false;
+            return;
         }
         
         field.touch();
         
         if(field.getState() == FieldState.EXPLODED){
             reveal(true);
+            this.timeFinished = System.currentTimeMillis();
             finished = true;
-            return true;
+            return;
         }
         
         if(getFieldNumber(x,y) == 0){
@@ -245,12 +274,13 @@ public class MinesweeperState {
         
         if(this.getFreeSpacesLeft() == 0){
             reveal(false);
+            this.timeFinished = System.currentTimeMillis();
             this.finished = true;
             this.won = true;
-            return true;
+            return;
         }
         
-        return false;
+        return;
     }
 
     private void touchEmptySpace(int x, int y) {
@@ -287,4 +317,24 @@ public class MinesweeperState {
         
     }
     
+    public void flag(int x, int y){
+        Field field = getField(x,y);
+        if(field.isFlagable() && !finished){
+            field.setState(FieldState.FLAGGED);
+        }
+    }
+    
+    public void question(int x, int y){
+        Field field = getField(x,y);
+        if(field.isFlagable() && !finished){
+            field.setState(FieldState.QUESTIONED);
+        }
+    }
+    
+    public void unflag(int x, int y){
+        Field field = getField(x,y);
+        if(field.isFlagable() && !finished){
+            field.setState(FieldState.UNTOUCHED);
+        }
+    }
 }
