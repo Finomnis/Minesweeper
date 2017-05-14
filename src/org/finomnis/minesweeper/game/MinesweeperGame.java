@@ -15,12 +15,12 @@ public class MinesweeperGame {
     
     public MinesweeperGame(){
         this.drawer = new MinesweeperDrawer();
-        this.currentGame = new MinesweeperState(100, 60, 999);
+        this.currentGame = new MinesweeperState(110, 55, 999);
         //this.currentGame = MinesweeperState.createExpert();
         redraw();
     }
     
-    private void redraw(){
+    public void redraw(){
         this.drawer.draw(this.currentGame);
     }
     
@@ -132,6 +132,16 @@ public class MinesweeperGame {
         return 16;
     }
 
+    public void mouseDown(int x, int y){
+    	currentGame.mouseDown(x, y);
+    	redraw();
+    }
+    
+    public void mouseUp(){
+    	currentGame.mouseUp();
+    	redraw();
+    }
+    
     public int getFieldNumber(int x, int y) {
         if(currentGame.getFieldState(x, y) == FieldState.REVEALED)
             return currentGame.getFieldNumber(x, y);

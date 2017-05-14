@@ -92,6 +92,12 @@ public class MinesweeperState {
     private long timeStarted;
     private long timeFinished;
     
+    private boolean mouseDown = false;
+    private int mouseDownX = 0;
+    private int mouseDownY = 0;
+    
+    private boolean facePressed = false;
+    
     public long getTime(){
         if(untouched){
             return 0;
@@ -337,4 +343,31 @@ public class MinesweeperState {
             field.setState(FieldState.UNTOUCHED);
         }
     }
+
+	public boolean isFacePressed() {
+		return facePressed;
+	}
+	
+	public boolean isMouseDown() {
+		return mouseDown;
+	}
+	
+	public int getMouseDownX(){
+		return mouseDownX;
+	}
+	
+	public int getMouseDownY(){
+		return mouseDownY;
+	}
+	
+	public void mouseDown(int x, int y){
+		mouseDownX = x;
+		mouseDownY = y;
+		mouseDown = true;
+	}
+	
+	public void mouseUp(){
+		mouseDown = false;
+	}
+	
 }

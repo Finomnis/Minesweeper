@@ -44,7 +44,10 @@ public class AIController extends GameController {
     
     private void longSleep(){
     	try {
-			Thread.sleep(1000);
+			for(int i = 0; i < 10; i++){
+				Thread.sleep(150);
+				game.redraw();
+			}
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -67,15 +70,20 @@ public class AIController extends GameController {
         if(relevantFields.isEmpty())
             return null;
         Coord result = relevantFields.removeFirst();
-        removeFromRelevantFields(result);
+        removeFromRelevantFields(result, true);
         return result;
     }
     
-    private void removeFromRelevantFields(Coord coord){
+    private Set<Coord> unquestionLater = new HashSet<Coord>();
+    
+    private void removeFromRelevantFields(Coord coord, boolean perm){
         while(relevantFields.remove(coord));
         if(coord.getFieldState() == FieldState.FLAGGED)
         	return;
-        game.unflag(coord.x, coord.y);
+        if(perm){
+        	unquestionLater.add(coord);
+        	//game.unflag(coord.x, coord.y);
+        }
         //sleep();
     }
     
@@ -122,11 +130,21 @@ public class AIController extends GameController {
             if(alreadyLookedAt.contains(neigh)) continue;
             updateRelevantFields(neigh, alreadyLookedAt);
         }
-        
+                
     }
     
     private void updateRelevantFields(Coord coord){
         updateRelevantFields(coord, new HashSet<Coord>());
+        
+        // Remove all deleted questionmarks
+        for(Coord relevantField : relevantFields){
+        	unquestionLater.remove(relevantField);
+        }
+        
+        for(Coord coordsToUnquestion : unquestionLater){
+        	if(coordsToUnquestion.getFieldState() == FieldState.QUESTIONED)
+        		game.unflag(coordsToUnquestion.x, coordsToUnquestion.y);
+        }
     }
 
     @Override
@@ -137,9 +155,11 @@ public class AIController extends GameController {
 
     private void touch(Coord coord){
         //removeFromRelevantFields(coord);
-        game.touch(coord.x, coord.y);
-        sleep();
-        if(game.gameFinished()){
+    	game.mouseDown(coord.x, coord.y);
+    	sleep();
+    	game.touch(coord.x, coord.y);
+    	game.mouseUp();
+    	if(game.gameFinished()){
         	if(game.gameWon()){
         		System.out.println("Winchance was: " + (Math.round(winChance*10000))/100.0f + " %");
         	} else {
@@ -152,11 +172,11 @@ public class AIController extends GameController {
     }
     
     private void flag(Coord coord){
-        removeFromRelevantFields(coord);
-        sleep();
+        removeFromRelevantFields(coord, false);
         game.flag(coord.x, coord.y);
         
         updateRelevantFields(coord);
+        sleep();
     }
     
     @Override
@@ -265,7 +285,7 @@ public class AIController extends GameController {
         // Compute global chance
         System.out.println("Global bruteforce failed! Taking lowest chance ...");
         float globalChance = globalProblem.getNumBombs()/(float)globalProblem.getNumFields();
-        System.out.println("Global chance is " + (Math.round((1-globalChance)*10000))/100.0f + " %.");
+        //System.out.println("Global chance is " + (Math.round((1-globalChance)*10000))/100.0f + " %.");
         //System.out.println(probabilities);
         float minChance = globalChance;
         Coord minCoord = null;
@@ -287,7 +307,7 @@ public class AIController extends GameController {
         }
         
         // Random
-        System.out.println("Lowest chance failed! Taking random field ...");
+        System.out.println("Lowest chance not suitable! Taking random field ...");
         
         int bestQuality = -10000;
         Coord bestCandidate = null;
