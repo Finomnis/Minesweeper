@@ -11,8 +11,8 @@ public class MinesweeperProblem {
 
 	private Map<Integer, Coord> reverseIdMap = new HashMap<Integer, Coord>();
 	private Map<Coord, Integer> idMap = new HashMap<Coord, Integer>();
-	private List<Set<Integer>> values_left = null;
-	private List<Integer> values_right = null;
+	private List<Set<Integer>> values_left = new ArrayList<Set<Integer>>();
+	private List<Integer> values_right = new ArrayList<Integer>();
 	
 	private MinesweeperProblem(){}
 	
@@ -28,34 +28,26 @@ public class MinesweeperProblem {
 		return id;
 	}
 	
-	private void addProblems(List<Set<Coord>> inputElems, List<Integer> inputSums){
-		for(Set<Coord> coordSet : inputElems){
-			for(Coord coord : coordSet){
-				this.addCoord(coord);
-			}
-		}
+	private void addEntry(Set<Coord> inputElems, int inputSum){
 		
-		this.values_left = new ArrayList<Set<Integer>>();
-		this.values_right = new ArrayList<Integer>();
+		for(Coord coord : inputElems){
+			this.addCoord(coord);
+		}		
 		
-        for(int i = 0; i < inputElems.size(); i++){            
-            
-        	Set<Integer> currentSet = new HashSet<Integer>();
-            
-        	for(Coord elem : inputElems.get(i)){
-            	currentSet.add(idMap.get(elem));
-            }
-            
-        	this.values_left.add(currentSet);
-            this.values_right.add(inputSums.get(i));
-        }		
+		Set<Integer> currentSet = new HashSet<Integer>();
+        
+    	for(Coord elem : inputElems){
+        	currentSet.add(idMap.get(elem));
+        }
+        
+    	this.values_left.add(currentSet);
+        this.values_right.add(inputSum);
+    		
 	}
 	
 	public static MinesweeperProblem create(List<Coord> relevantPoints){
         
-		ArrayList<Set<Coord>> inputElems = new ArrayList<Set<Coord>>();
-	    ArrayList<Integer> inputSums = new ArrayList<Integer>();
-		
+	    MinesweeperProblem problem = new MinesweeperProblem();
 		for(Coord importantField : relevantPoints){
             int existingFlagged = 0;
             Set<Coord> emptyNeighbors = new HashSet<Coord>();
@@ -74,13 +66,8 @@ public class MinesweeperProblem {
                 };
             }
             
-            inputElems.add(emptyNeighbors);
-            inputSums.add(importantField.getFieldNumber() - existingFlagged);
-        }
-		
-		MinesweeperProblem problem = new MinesweeperProblem();
-		problem.addProblems(inputElems, inputSums);
-		
+            problem.addEntry(emptyNeighbors, importantField.getFieldNumber() - existingFlagged);
+        }		
 		
 		return problem;
 	}
@@ -108,33 +95,23 @@ public class MinesweeperProblem {
 				problem1.addCoord(reverseIdMap.get(i));
 			}
 		}
-		
-		List<Set<Coord>> val_left0 = new ArrayList<Set<Coord>>();
-		List<Set<Coord>> val_left1 = new ArrayList<Set<Coord>>();
-		List<Integer> val_right0 = new ArrayList<Integer>();
-		List<Integer> val_right1 = new ArrayList<Integer>();
+
 		for(int i = 0; i < values_left.size(); i++){
 			Set<Coord> coordsSet = new HashSet<Coord>();
 			for(int rowElems : values_left.get(i)){
 				coordsSet.add(reverseIdMap.get(rowElems));
 			}
 			if(rows.contains(i)){
-				val_left0.add(coordsSet);
-				val_right0.add(values_right.get(i));
+				problem0.addEntry(coordsSet,values_right.get(i));
 			} else {
-				val_left1.add(coordsSet);
-				val_right1.add(values_right.get(i));
+				problem1.addEntry(coordsSet,values_right.get(i));
 			}
 		}
 		
-		problem0.addProblems(val_left0, val_right0);
-		
 		List<MinesweeperProblem> ret = new ArrayList<MinesweeperProblem>();
-		
 		ret.add(problem0);
 
-		if(!val_left1.isEmpty()){
-			problem1.addProblems(val_left1, val_right1);
+		if(!problem1.getCoords().isEmpty()){
 			ret.addAll(problem1.split());
 		}
 		
