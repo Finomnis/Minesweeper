@@ -14,7 +14,13 @@ public class MinesweeperProblem {
 	private List<Set<Integer>> values_left = new ArrayList<Set<Integer>>();
 	private List<Integer> values_right = new ArrayList<Integer>();
 	
-	private MinesweeperProblem(){}
+	private int numFields;
+	private int numBombs;
+	
+	private MinesweeperProblem(int numFields, int numBombs){
+		this.numFields = numFields;
+		this.numBombs = numBombs;
+	}
 	
 	private int addCoord(Coord coord){
 		Integer existingId = idMap.get(coord);
@@ -28,7 +34,19 @@ public class MinesweeperProblem {
 		return id;
 	}
 	
-	private void addEntry(Set<Coord> inputElems, int inputSum){
+	public MinesweeperProblem copy(){
+		MinesweeperProblem other = new MinesweeperProblem(numFields,numBombs);
+		for(int i = 0; i < values_right.size(); i++){
+			Set<Coord> currentSet = new HashSet<Coord>();
+			for(int val : values_left.get(i)){
+				currentSet.add(reverseIdMap.get(val));
+			}
+			other.addEntry(currentSet, values_right.get(i));
+		}
+		return other;
+	}
+	
+	public void addEntry(Set<Coord> inputElems, int inputSum){
 		
 		for(Coord coord : inputElems){
 			this.addCoord(coord);
@@ -45,9 +63,9 @@ public class MinesweeperProblem {
     		
 	}
 	
-	public static MinesweeperProblem create(List<Coord> relevantPoints){
+	public static MinesweeperProblem create(List<Coord> relevantPoints, int numFields, int numBombs){
         
-	    MinesweeperProblem problem = new MinesweeperProblem();
+	    MinesweeperProblem problem = new MinesweeperProblem(numFields,numBombs);
 		for(Coord importantField : relevantPoints){
             int existingFlagged = 0;
             Set<Coord> emptyNeighbors = new HashSet<Coord>();
@@ -86,8 +104,8 @@ public class MinesweeperProblem {
 		colorize(cols, rows, 0);
 
 		// Split
-		MinesweeperProblem problem0 = new MinesweeperProblem();
-		MinesweeperProblem problem1 = new MinesweeperProblem();
+		MinesweeperProblem problem0 = new MinesweeperProblem(numFields,numBombs);
+		MinesweeperProblem problem1 = new MinesweeperProblem(numFields,numBombs);
 		for(int i = 0; i < idMap.size(); i++){
 			if(cols.contains(i)){
 				problem0.addCoord(reverseIdMap.get(i));
@@ -174,8 +192,11 @@ public class MinesweeperProblem {
         Map<Coord, Boolean> inputSolutions = new HashMap<Coord,Boolean>();
 		for(Map.Entry<Integer, Boolean> solution : solutions.entrySet()){
             inputSolutions.put(reverseIdMap.get(solution.getKey()), solution.getValue());
-            System.out.println(reverseIdMap.get(solution.getKey()) + ": " + solution.getValue());
+            //System.out.println(reverseIdMap.get(solution.getKey()) + ": " + solution.getValue());
         }
+		if(!inputSolutions.isEmpty()){
+			System.out.println("Success!");
+		}
 		return inputSolutions;
 	}
 
@@ -185,6 +206,14 @@ public class MinesweeperProblem {
 
 	public int getPosition(Coord coord) {
 		return idMap.get(coord);
+	}
+
+	public int getNumBombs() {
+		return numBombs;
+	}
+	
+	public int getNumFields() {
+		return numFields;
 	}
 	
 }

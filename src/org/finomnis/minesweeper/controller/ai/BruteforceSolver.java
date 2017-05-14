@@ -25,6 +25,7 @@ public class BruteforceSolver implements MinesweeperSolver{
 		int position = currentSolution.size();
 		
 		if(position == problem.getNumCols()){
+			
 			solutions.add(new ArrayList<Boolean>(currentSolution));
 			return;
 		}		
@@ -58,6 +59,20 @@ public class BruteforceSolver implements MinesweeperSolver{
 				}
 			}
 			
+			int numBombsInCurrentSolution = 0;
+			for(boolean isBomb : currentSolution){
+				if(isBomb){
+					numBombsInCurrentSolution++;
+				}
+			}
+			if(numBombsInCurrentSolution > problem.getNumBombs()){
+				problems = true;
+			}
+			else if(currentSolution.size() == problem.getNumCols()
+					&& numBombsInCurrentSolution + problem.getNumFields() < problem.getNumBombs()){
+				problems = true;
+			}
+			
 			// recurse
 			if(!problems)
 				recurse();
@@ -76,14 +91,6 @@ public class BruteforceSolver implements MinesweeperSolver{
 			currentSolution.removeLast();
 		}
 		
-	}
-	
-	public boolean solve(MinesweeperProblem globalProblem, int numMines) {
-		if(numMines < 0)
-			return false;
-		System.out.println(numMines);
-		// TODO solve
-		return false;
 	}
 	
 	@Override

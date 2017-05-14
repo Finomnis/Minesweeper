@@ -15,7 +15,8 @@ public class MinesweeperGame {
     
     public MinesweeperGame(){
         this.drawer = new MinesweeperDrawer();
-        this.currentGame = new MinesweeperState(100, 60, 999);//MinesweeperState.createExpert();
+        this.currentGame = new MinesweeperState(100, 60, 999);
+        //this.currentGame = MinesweeperState.createExpert();
         redraw();
     }
     

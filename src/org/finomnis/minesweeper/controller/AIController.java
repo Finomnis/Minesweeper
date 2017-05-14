@@ -17,7 +17,7 @@ import org.finomnis.minesweeper.game.MinesweeperState.FieldState;
 
 public class AIController extends GameController {
 
-
+	private float winChance = 1.0f;
     
     private boolean isTouchable(Coord coord){
         FieldState state = coord.getFieldState();
@@ -36,7 +36,15 @@ public class AIController extends GameController {
     
     private void sleep(){
     	try {
-			Thread.sleep(1);
+			Thread.sleep(100);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+    }
+    
+    private void longSleep(){
+    	try {
+			Thread.sleep(1000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
@@ -132,6 +140,11 @@ public class AIController extends GameController {
         game.touch(coord.x, coord.y);
         sleep();
         if(game.gameFinished()){
+        	if(game.gameWon()){
+        		System.out.println("Winchance was: " + (Math.round(winChance*10000))/100.0f + " %");
+        	} else {
+        		System.out.println("Lost after taking a total risk of " + (Math.round((1-winChance)*10000))/100.0f + " %.");
+        	}
             return;
         }
         
@@ -182,8 +195,9 @@ public class AIController extends GameController {
     	}
         
         System.out.println("Direct logic failed! Trying Gauss ...");
-        
-        MinesweeperProblem globalProblem = MinesweeperProblem.create(getImportantOpenFields());
+
+        List<Coord> touchableFields = getAllTouchableFields();
+        MinesweeperProblem globalProblem = MinesweeperProblem.create(getImportantOpenFields(), touchableFields.size(), game.getNumMinesLeft());
         List<MinesweeperProblem> problems = globalProblem.split();
         
         //for(MinesweeperProblem subProblem : problems){
@@ -228,21 +242,32 @@ public class AIController extends GameController {
         
         
         // Global bruteforce
-        List<Coord> touchableFields = getAllTouchableFields();
         System.out.println("Bruteforce failed! Trying global bruteforce ...");
         {
-        	for(int i = 0; i < 2; i++){
-        		System.out.println("Global attempt #" + (i+1) + " ...");
-        		BruteforceSolver bruteforceSolver = new BruteforceSolver();
-        		bruteforceSolver.solve(globalProblem, game.getNumMinesLeft() - i * (touchableFields.size() - probabilities.size()));
-        	}
+    		BruteforceSolver bruteforceSolver = new BruteforceSolver();
+    		if(bruteforceSolver.solve(globalProblem)){
+    			
+            	for(Map.Entry<Coord, Boolean> bruteforceSolution : bruteforceSolver.getResults().entrySet()){
+            		if(bruteforceSolution.getValue() == true){
+            			flag(bruteforceSolution.getKey());
+            		} else {
+            			touch(bruteforceSolution.getKey());
+            		}
+            	}
+            	
+            	return false;
+                
+            }
         }
         	
-
         // Chance
+        
+        // Compute global chance
         System.out.println("Global bruteforce failed! Taking lowest chance ...");
-        System.out.println(probabilities);
-        float minChance = 2.0f;
+        float globalChance = globalProblem.getNumBombs()/(float)globalProblem.getNumFields();
+        System.out.println("Global chance is " + (Math.round((1-globalChance)*10000))/100.0f + " %.");
+        //System.out.println(probabilities);
+        float minChance = globalChance;
         Coord minCoord = null;
         for(Map.Entry<Coord, Float> prob : probabilities.entrySet()){
         	addToRelevantFields(prob.getKey());
@@ -254,11 +279,9 @@ public class AIController extends GameController {
         }
         
         if(minCoord != null){
-        	try {
-				Thread.sleep(2000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+        	winChance *= (1-minChance);
+        	System.out.println("Taking a chance of " + (Math.round((1-minChance)*10000))/100.0f + " % ...");
+        	longSleep();
         	touch(minCoord);
         	return false;
         }
@@ -266,15 +289,51 @@ public class AIController extends GameController {
         // Random
         System.out.println("Lowest chance failed! Taking random field ...");
         
-        /*for(int y = 0; y < game.getSizeY()){
-        	for(int x = 0; x < game.getSizeX()){
+        int bestQuality = -10000;
+        Coord bestCandidate = null;
+        
+        for(int y = 0; y < game.getSizeY(); y++){
+        	for(int x = 0; x < game.getSizeX(); x++){
+        		Coord coord = new Coord(x,y,game);
+        		if(!isTouchable(coord))
+        			continue;
         		
+        		int currentQuality = 0;
+        		for(Coord neigh : coord.getNeighbors()){
+        			switch(neigh.getFieldState()){
+					case FLAGGED:
+						currentQuality-=3;
+						break;
+					case QUESTIONED:
+					case UNTOUCHED:
+						currentQuality-=1;
+						break;
+					case REVEALED:
+						currentQuality-=20;
+						break;
+					default:
+						break;        				
+        			}
+        		}
+        		if(currentQuality > bestQuality){
+        			bestQuality = currentQuality;
+        			bestCandidate = coord;
+        		}
         	}
         }
-        Thread.sleep(2000);
-        */
-        while(true);
-        //return false;
+        
+        if(bestCandidate != null){
+        	winChance *= (1-globalChance);
+        	System.out.println("Taking a chance of " + (Math.round((1-globalChance)*10000))/100.0f + " % ...");
+        	longSleep();
+        	touch(bestCandidate);
+        	return false;
+        }
+    	
+        
+        System.out.println("Taking random field failed. Running out of ideas.");
+        
+        while(true){sleep();}
     }
 
     private List<Coord> getImportantOpenFields() {
