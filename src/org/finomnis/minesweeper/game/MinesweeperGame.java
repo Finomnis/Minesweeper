@@ -15,7 +15,7 @@ public class MinesweeperGame {
     
     public MinesweeperGame(){
         this.drawer = new MinesweeperDrawer();
-        this.currentGame = MinesweeperState.createExpert();
+        this.currentGame = new MinesweeperState(100, 60, 999);//MinesweeperState.createExpert();
         redraw();
     }
     
@@ -29,7 +29,7 @@ public class MinesweeperGame {
                 if(gameController != null){
                     while(gameController.step()){};
                 }
-                Thread.sleep(500);
+                Thread.sleep(1);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -137,5 +137,9 @@ public class MinesweeperGame {
         else
             return -1;
     }
+
+	public int getNumMinesLeft() {
+		return currentGame.getNumMinesLeft();
+	}
     
 }

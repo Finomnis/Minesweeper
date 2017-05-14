@@ -1,81 +1,47 @@
-package org.finomnis.minesweeper.controller;
+package org.finomnis.minesweeper.controller.ai;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-public class BinaryGauss<T> {
+public class BinaryGauss implements MinesweeperSolver {
 
-    private ArrayList<Set<T>> inputElems = new ArrayList<Set<T>>();
-    private ArrayList<Integer> inputSums = new ArrayList<Integer>();
-    
-    public void addDependency(Integer sum, Integer constant, @SuppressWarnings("unchecked") T... elements){
-        Set<T> elemsSet = new HashSet<T>();
-        for(T elem : elements){
-            elemsSet.add(elem);
-        }
-        addDependency(sum,constant,elemsSet);
-    }
-    
-    public void addDependency(Integer sum, Integer constant, Set<T> elements){
-        System.out.println("Adding " + sum + ", " + constant + ", " +elements.size());
-        Set<T> elemsCpy = new HashSet<T>(elements);
-        inputElems.add(elemsCpy);
-        inputSums.add(sum-constant);
-    }
-    
-    private int[][] matrix;
-    
-    private Map<T, Integer> elementIds = new HashMap<T, Integer>();
-    private Map<Integer, T> reverseElementIds = new HashMap<Integer, T>();
+	private int[][] matrix;
     
     private Map<Integer, Boolean> solutions = new HashMap<Integer, Boolean>();
-    private Map<T, Boolean> inputSolutions = new HashMap<T, Boolean>();
+    private Map<Coord, Boolean> inputSolutions = new HashMap<Coord, Boolean>();
     
-    public void solve(){
+    public boolean solve(MinesweeperProblem problem){
                 
-        // create input elements mapping
-        for(Set<T> inputRowElems : inputElems){
-            for(T elem : inputRowElems){
-                if(elementIds.containsKey(elem))
-                    continue;
-                reverseElementIds.put(elementIds.size(), elem);
-                elementIds.put(elem, elementIds.size());
-            }
-        }
-        
         // create matrix
-        matrix = new int[inputElems.size()][elementIds.size() + 1];
+        matrix = new int[problem.getNumRows()][problem.getNumCols() + 1];
         
         // fill matrix
-        for(int i = 0; i < inputElems.size(); i++){
-            Set<T> inputRowElems = inputElems.get(i);
-            int inputRowSum = inputSums.get(i);
+        for(int i = 0; i < problem.getNumRows(); i++){
+            Set<Integer> inputRowElems = problem.getRow(i);
+            int inputRowSum = problem.getRowSum(i);
             
-            for(T elem : inputRowElems){
-                int pos = elementIds.get(elem);
-                matrix[i][pos] = 1;
+            for(int elem : inputRowElems){
+                matrix[i][elem] = 1;
             }
             
             matrix[i][matrix[i].length-1] = inputRowSum;
         }
         
-        printMatrix("Init");
+        //printMatrix("Init");
         
         // GAUSS
         gauss(0,0);
         
-        printMatrix("After Gauss");
+        //printMatrix("After Gauss");
 
         // Find solutions
         while(findMoreSolutions());
         
-        for(Map.Entry<Integer, Boolean> solution : solutions.entrySet()){
-            inputSolutions.put(reverseElementIds.get(solution.getKey()), solution.getValue());
-            System.out.println(solution.getKey() + ": " + solution.getValue());
-        }
+        inputSolutions = problem.mapSolutions(solutions);
+        
+        return !inputSolutions.isEmpty();
         
     }
     
@@ -170,7 +136,7 @@ public class BinaryGauss<T> {
             }
         }
         
-        printMatrix("After gauss(" + row + ", " + col + ")");
+        //printMatrix("After gauss(" + row + ", " + col + ")");
         
         gauss(row+1,col+1);
         
@@ -182,7 +148,7 @@ public class BinaryGauss<T> {
             }
         }
         
-        printMatrix("After reverse gauss(" + row + ", " + col + ")");
+        //printMatrix("After reverse gauss(" + row + ", " + col + ")");
         
     }
     
@@ -198,21 +164,7 @@ public class BinaryGauss<T> {
         System.out.println();
     }
     
-    public boolean mustBeTrue(Integer i){
-        Boolean res = solutions.get(i);
-        if(res == null)
-            return false;
-        return res;
-    }
-    
-    public boolean mustBeFalse(Integer i){
-        Boolean res = solutions.get(i);
-        if(res == null)
-            return false;
-        return !((boolean)res);
-    }
-    
-    public Map<T, Boolean> getResults(){
+    public Map<Coord, Boolean> getResults(){
         return inputSolutions;
     }
     
@@ -220,8 +172,8 @@ public class BinaryGauss<T> {
         return !inputSolutions.isEmpty();
     }
     
-    public float chance(Integer i){
-        return 0;
+    public float getChance(Coord i){
+        return 0.5f;
     }
     
 }

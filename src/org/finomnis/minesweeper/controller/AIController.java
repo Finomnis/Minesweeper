@@ -1,75 +1,26 @@
 package org.finomnis.minesweeper.controller;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 
+import org.finomnis.minesweeper.controller.ai.BinaryGauss;
+import org.finomnis.minesweeper.controller.ai.BruteforceSolver;
+import org.finomnis.minesweeper.controller.ai.Coord;
+import org.finomnis.minesweeper.controller.ai.MinesweeperProblem;
+import org.finomnis.minesweeper.controller.ai.MinesweeperSolver;
 import org.finomnis.minesweeper.game.MinesweeperState.FieldState;
 
 public class AIController extends GameController {
 
-    private static class Coord {
 
-        public Coord(int x, int y){
-            this.x = x;
-            this.y = y;
-        }
-        public final int x;
-        public final int y;
-        
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result + x;
-            result = prime * result + y;
-            return result;
-        }
-        
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj)
-                return true;
-            if (obj == null)
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            Coord other = (Coord) obj;
-            if (x != other.x)
-                return false;
-            if (y != other.y)
-                return false;
-            return true;
-        }
-        
-        @Override
-        public String toString(){
-            return "Field(" + x + "," + y + ")";
-        }
-    }
-    
-    private List<Coord> getNeighbors(Coord coord){
-        List<Coord> res = new ArrayList<Coord>();
-        
-        for(int y = coord.y - 1; y <= coord.y + 1; y++){
-            if(y < 0 || y >= game.getSizeY()) continue;
-            for(int x = coord.x - 1; x <= coord.x+1; x++){
-                if(x < 0 || x >= game.getSizeX()) continue;
-                if(x == coord.x && y == coord.y){
-                    continue;
-                }
-                res.add(new Coord(x,y));
-            }
-        }
-        
-        return res;
-    }
     
     private boolean isTouchable(Coord coord){
-        FieldState state = game.getFieldState(coord.x,coord.y);
+        FieldState state = coord.getFieldState();
         switch(state){
             case UNTOUCHED:
             case QUESTIONED:
@@ -83,13 +34,25 @@ public class AIController extends GameController {
     
     private LinkedList<Coord> relevantFields = new LinkedList<Coord>();
     
+    private void sleep(){
+    	try {
+			Thread.sleep(1);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+    }
+    
     private void addToRelevantFields(Coord coord){
         while(relevantFields.remove(coord));
         if(mustHaveBomb(coord))
             return;
+        if(coord.getFieldState() == FieldState.FLAGGED)
+        	return;
         relevantFields.addFirst(coord);
+        if(coord.getFieldState() == FieldState.QUESTIONED)
+        	return;
         game.question(coord.x, coord.y);
-        
+        //sleep();
     }
     
     private Coord takeFromRelevantFields(){
@@ -102,16 +65,19 @@ public class AIController extends GameController {
     
     private void removeFromRelevantFields(Coord coord){
         while(relevantFields.remove(coord));
+        if(coord.getFieldState() == FieldState.FLAGGED)
+        	return;
         game.unflag(coord.x, coord.y);
+        //sleep();
     }
     
     private void updateRelevantFields(Coord coord, Set<Coord> alreadyLookedAt){
         
-        FieldState state = game.getFieldState(coord.x,coord.y);
+        FieldState state = coord.getFieldState();
         
         if(state == FieldState.UNTOUCHED || state == FieldState.QUESTIONED){
-            for(Coord neigh : getNeighbors(coord)){
-                if(game.getFieldState(neigh.x, neigh.y) == FieldState.REVEALED){
+            for(Coord neigh : coord.getNeighbors()){
+                if(neigh.getFieldState() == FieldState.REVEALED){
                     addToRelevantFields(coord);
                     return;
                 }
@@ -120,7 +86,7 @@ public class AIController extends GameController {
         }
         
         if(state == FieldState.FLAGGED){
-            for(Coord neigh : getNeighbors(coord)){
+            for(Coord neigh : coord.getNeighbors()){
                 if(isTouchable(neigh)){
                     updateRelevantFields(neigh);
                 }
@@ -132,8 +98,8 @@ public class AIController extends GameController {
             return;
         }
         
-        if(game.getFieldNumber(coord.x,coord.y) > 0){
-            for(Coord neigh : getNeighbors(coord)){
+        if(coord.getFieldNumber() > 0){
+            for(Coord neigh : coord.getNeighbors()){
                 if(isTouchable(neigh)){
                     addToRelevantFields(neigh);
                 }
@@ -144,7 +110,7 @@ public class AIController extends GameController {
         // we have a revealed but empty field. now do a neighbor search
         alreadyLookedAt.add(coord);
         
-        for(Coord neigh : getNeighbors(coord)){
+        for(Coord neigh : coord.getNeighbors()){
             if(alreadyLookedAt.contains(neigh)) continue;
             updateRelevantFields(neigh, alreadyLookedAt);
         }
@@ -164,6 +130,7 @@ public class AIController extends GameController {
     private void touch(Coord coord){
         //removeFromRelevantFields(coord);
         game.touch(coord.x, coord.y);
+        sleep();
         if(game.gameFinished()){
             return;
         }
@@ -173,6 +140,7 @@ public class AIController extends GameController {
     
     private void flag(Coord coord){
         removeFromRelevantFields(coord);
+        sleep();
         game.flag(coord.x, coord.y);
         
         updateRelevantFields(coord);
@@ -186,68 +154,125 @@ public class AIController extends GameController {
         
         if(firstMove){
             firstMove = false;
-            touch(new Coord(0,0));
+        	Random rnd = new Random();
+        	if(rnd.nextBoolean()){
+        		int x = rnd.nextBoolean()?0:game.getSizeX()-1;
+        		int y = rnd.nextInt(game.getSizeY());
+        		touch(new Coord(x,y,game));
+        	} else {
+        		int x = rnd.nextInt(game.getSizeX());
+        		int y = rnd.nextBoolean()?0:game.getSizeY()-1;
+        		touch(new Coord(x,y,game));
+        	}
             return false;
         }
         
-        Coord coord = takeFromRelevantFields();
-        while(coord != null){
-            if(isTouchable(coord)){
-                if(!couldHaveBomb(coord)){
-                    touch(coord);
-                    System.out.println(coord);
-                    return false;
-                }
-            }
-            coord = takeFromRelevantFields();
-        }
+        // DIRECT LOGIC
+        {
+	        Coord coord = takeFromRelevantFields();
+	        while(coord != null){
+	            if(isTouchable(coord)){
+	                if(!couldHaveBomb(coord)){
+	                    touch(coord);
+	                    return false;
+	                }
+	            }
+	            coord = takeFromRelevantFields();
+	        }
+    	}
         
-        
-        // GAUSS
         System.out.println("Direct logic failed! Trying Gauss ...");
         
-        // get important fields for gauss
-        List<Coord> importantFields = getImportantOpenFields();
+        MinesweeperProblem globalProblem = MinesweeperProblem.create(getImportantOpenFields());
+        List<MinesweeperProblem> problems = globalProblem.split();
         
-        // initialize gauss
-        BinaryGauss<Coord> gaussSolver = new BinaryGauss<Coord>();
-        for(Coord importantField : importantFields){
-            int existingFlagged = 0;
-            Set<Coord> emptyNeighbors = new HashSet<Coord>();
-            for(Coord neigh : getNeighbors(importantField)){
-                switch(game.getFieldState(neigh.x, neigh.y)){
-                case FLAGGED:
-                    existingFlagged++;
-                    break;
-                case QUESTIONED:
-                case UNTOUCHED:
-                    emptyNeighbors.add(neigh);
-                    break;
-                default:
-                    break;
-                       
-                };
+        //for(MinesweeperProblem subProblem : problems){
+        //	System.out.println(subProblem);     
+        //}
+
+        // GAUSS
+        for(MinesweeperProblem subProblem : problems){
+            MinesweeperSolver gaussSolver = new BinaryGauss();
+            if(gaussSolver.solve(subProblem)){
+            	for(Map.Entry<Coord, Boolean> gaussSolution : gaussSolver.getResults().entrySet()){
+            		if(gaussSolution.getValue() == true){
+            			flag(gaussSolution.getKey());
+            		} else {
+            			touch(gaussSolution.getKey());
+            		}
+            	}
+                return false;
             }
-            gaussSolver.addDependency(game.getFieldNumber(importantField.x, importantField.y), existingFlagged, emptyNeighbors);
         }
         
-        // run gauss
-        gaussSolver.solve();
+        // Bruteforce
+        Map<Coord, Float> probabilities = new HashMap<Coord, Float>();
         
-        if(gaussSolver.hasResults()){
-            for(Map.Entry<Coord, Boolean> gaussSolution : gaussSolver.getResults().entrySet()){
-                if(gaussSolution.getValue() == true){
-                    game.flag(gaussSolution.getKey().x, gaussSolution.getKey().y);
-                } else {
-                    touch(gaussSolution.getKey());
-                }
+        System.out.println("Gauss failed! Trying brute force ...");
+        for(MinesweeperProblem subProblem : problems){
+            MinesweeperSolver bruteforceSolver = new BruteforceSolver();
+            if(bruteforceSolver.solve(subProblem)){
+            	for(Map.Entry<Coord, Boolean> bruteforceSolution : bruteforceSolver.getResults().entrySet()){
+            		if(bruteforceSolution.getValue() == true){
+            			flag(bruteforceSolution.getKey());
+            		} else {
+            			touch(bruteforceSolution.getKey());
+            		}
+            	}
+                return false;
             }
-            return false;
+            for(Coord currentCoord : subProblem.getCoords()){
+            	probabilities.put(currentCoord, bruteforceSolver.getChance(currentCoord));
+            }
+        }
+        
+        
+        // Global bruteforce
+        List<Coord> touchableFields = getAllTouchableFields();
+        System.out.println("Bruteforce failed! Trying global bruteforce ...");
+        {
+        	for(int i = 0; i < 2; i++){
+        		System.out.println("Global attempt #" + (i+1) + " ...");
+        		BruteforceSolver bruteforceSolver = new BruteforceSolver();
+        		bruteforceSolver.solve(globalProblem, game.getNumMinesLeft() - i * (touchableFields.size() - probabilities.size()));
+        	}
+        }
+        	
+
+        // Chance
+        System.out.println("Global bruteforce failed! Taking lowest chance ...");
+        System.out.println(probabilities);
+        float minChance = 2.0f;
+        Coord minCoord = null;
+        for(Map.Entry<Coord, Float> prob : probabilities.entrySet()){
+        	addToRelevantFields(prob.getKey());
+        	//game.question(prob.getKey().x, prob.getKey().y);
+        	if(prob.getValue() < minChance){
+        		minChance = prob.getValue();
+        		minCoord = prob.getKey();
+        	}
+        }
+        
+        if(minCoord != null){
+        	try {
+				Thread.sleep(2000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+        	touch(minCoord);
+        	return false;
         }
         
         // Random
-        System.out.println("Gauss failed! Trying something else ...");
+        System.out.println("Lowest chance failed! Taking random field ...");
         
+        /*for(int y = 0; y < game.getSizeY()){
+        	for(int x = 0; x < game.getSizeX()){
+        		
+        	}
+        }
+        Thread.sleep(2000);
+        */
         while(true);
         //return false;
     }
@@ -257,8 +282,31 @@ public class AIController extends GameController {
         for(int y = 0; y < game.getSizeY(); y++){
             for(int x = 0; x < game.getSizeX(); x++){
                 if(game.getFieldState(x, y) != FieldState.REVEALED) continue;
-                Coord currentField= new Coord(x,y);
-                for(Coord neigh : getNeighbors(currentField)){
+                Coord currentField= new Coord(x,y,game);
+                for(Coord neigh : currentField.getNeighbors()){
+                    if(isTouchable(neigh)){
+                        result.add(currentField);
+                        break;
+                    }
+                }
+            }
+        }
+        return result;
+    }
+    
+    private List<Coord> getAllTouchableFields(){
+    	List<Coord> result = new LinkedList<Coord>();
+        for(int y = 0; y < game.getSizeY(); y++){
+            for(int x = 0; x < game.getSizeX(); x++){
+                switch(game.getFieldState(x, y)){
+				case QUESTIONED:
+				case UNTOUCHED:
+					break;
+				default:
+					continue;
+                }
+                Coord currentField= new Coord(x,y,game);
+                for(Coord neigh : currentField.getNeighbors()){
                     if(isTouchable(neigh)){
                         result.add(currentField);
                         break;
@@ -270,13 +318,13 @@ public class AIController extends GameController {
     }
 
     private void flagBombsNear(Coord coord){
-        int num = game.getFieldNumber(coord.x, coord.y);
+        int num = coord.getFieldNumber();
         if(num <= 0) return;
         
         int numOpen = 0;
         int numFlagged = 0;
-        for(Coord neigh : getNeighbors(coord)){
-            switch(game.getFieldState(neigh.x, neigh.y)){
+        for(Coord neigh : coord.getNeighbors()){
+            switch(neigh.getFieldState()){
             case FLAGGED:
                 numFlagged++;
                 break;
@@ -292,11 +340,11 @@ public class AIController extends GameController {
         
         int numLeft = num - numFlagged;
         if(numLeft == numOpen){
-            for(Coord neigh : getNeighbors(coord)){
-                switch(game.getFieldState(neigh.x, neigh.y)){
+            for(Coord neigh : coord.getNeighbors()){
+                switch(neigh.getFieldState()){
                 case QUESTIONED:
                 case UNTOUCHED:
-                    game.flag(neigh.x, neigh.y);
+                    flag(neigh);
                     break;
                 default:
                     break;
@@ -307,22 +355,22 @@ public class AIController extends GameController {
     }
     
     private boolean mustHaveBomb(Coord coord) {
-        if(game.getFieldState(coord.x, coord.y) == FieldState.FLAGGED){
+        if(coord.getFieldState() == FieldState.FLAGGED){
             return true;
         }
-        for(Coord neigh : getNeighbors(coord)){
+        for(Coord neigh : coord.getNeighbors()){
             flagBombsNear(neigh);
         }
         return false;
     }
 
     private boolean isFilled(Coord coord){
-        int num = game.getFieldNumber(coord.x,coord.y);
+        int num = coord.getFieldNumber();
         
         if(num < 0) return false;
         
         int numBomb = 0;
-        for(Coord neigh : getNeighbors(coord)){
+        for(Coord neigh : coord.getNeighbors()){
             if(mustHaveBomb(neigh)){
                 numBomb++;
             }
@@ -332,7 +380,7 @@ public class AIController extends GameController {
     }
     
     private boolean couldHaveBomb(Coord coord) {
-        for(Coord neigh : getNeighbors(coord)){
+        for(Coord neigh : coord.getNeighbors()){
             if(isFilled(neigh))
                 return false;
         }
